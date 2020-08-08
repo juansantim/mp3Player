@@ -1,0 +1,30 @@
+{
+  "name": "mp3player",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon src/app.js",
+    "debug": "nodemon --inspect src/app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/juansantim/mp3Player.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/juansantim/mp3Player/issues"
+  },
+  "homepage": "https://github.com/juansantim/mp3Player#readme",
+  "dependencies": {
+    "express": "^4.17.1",
+    "moment": "^2.27.0",
+    "sequelize": "^6.3.4",
+    "sqlite3": "^5.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.4"
+  }
+}
