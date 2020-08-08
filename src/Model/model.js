@@ -22,7 +22,7 @@ const connection = new Sequelize({
 })
 
 connection.sync({
-    force:true
+    //force:true
 })
 
 module.exports = model;
