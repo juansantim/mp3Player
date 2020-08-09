@@ -1,5 +1,6 @@
 const express = require('express')
 var bodyParser = require('body-parser')
+var cors = require('cors')
 
 var app = express()
 
@@ -7,6 +8,9 @@ var app = express()
 app.use(bodyParser.urlencoded({ extended: false }))
 // parse application/json
 app.use(bodyParser.json())
+
+app.use(cors())
+
 
 const mp3 = require('./mp3');
 
