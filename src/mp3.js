@@ -71,9 +71,18 @@ router.get('/updateDb', (req, res) => {
       "createdAt":"2020-08-08T20:23:32.944Z",
       "updatedAt":"2020-08-08T20:23:32.944Z"
 */
-router.get('/getall', (req, res) => {
+router.post('/getall', (req, res) => {
+    console.log(req.body);
     audios = model.Audios.findAll({ attributes: ['id', 'FileName', 'Origen', 'Destino', 'Fecha'] }).then(data => {
-        res.send(data);
+        
+        let result = {
+            totalItems:data.length,
+            data,
+            totalPages: 1,
+            currentPage: 1
+        };
+        
+        res.send(result);
     })
 
 })
@@ -94,6 +103,9 @@ router.get('/play', (req, res) => {
 
 })
 
+router.get('list', (req, res) => {
+
+});
 
 router.get('/download', (req, res) => {
     const id = req.query.id;
