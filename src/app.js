@@ -6,11 +6,11 @@ var app = express()
 
 
 app.use(bodyParser.urlencoded({ extended: false }))
-// parse application/json
 app.use(bodyParser.json())
-
 app.use(cors())
 
+const path = require("path");
+app.use('/audio', express.static(path.join(__dirname, '../audio')))
 
 const mp3 = require('./mp3');
 

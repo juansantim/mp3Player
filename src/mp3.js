@@ -9,10 +9,10 @@ router.get('/', (req, res) => {
     res.send('Hello World')
 })
 
-router.get('/updateDb', (req, res) => {
+const fs = require('fs');
+const path = require('path');
 
-    const path = require('path');
-    const fs = require('fs');
+router.get('/updateDb', (req, res) => {
 
     //joining path of directory 
     const directoryPath = path.join(__dirname, '../audio');
@@ -39,9 +39,9 @@ router.get('/updateDb', (req, res) => {
             //q-4000-8092212448-20190228-160309-1551384167.199115.WAV
 
             var array = file.split('-');
-            
+
             let origen = array[2];
-            let destino =array[1];
+            let destino = array[1];
 
             let fecha = moment(array[3]).toDate();
 
@@ -53,8 +53,6 @@ router.get('/updateDb', (req, res) => {
                 Destino: destino,
                 Fecha: fecha
             })
-
-            console.log(file);
         });
 
         res.send('UpToDate')
@@ -74,56 +72,50 @@ router.get('/updateDb', (req, res) => {
       "updatedAt":"2020-08-08T20:23:32.944Z"
 */
 router.get('/getall', (req, res) => {
-    audios = model.Audios.findAll({attributes:['id', 'FileName', 'Origen', 'Destino', 'Fecha']}).then(data => {
+    audios = model.Audios.findAll({ attributes: ['id', 'FileName', 'Origen', 'Destino', 'Fecha'] }).then(data => {
         res.send(data);
     })
-    
+
 })
 
-router.get('/stream', (req, res) => {
+router.get('/play', (req, res) => {
+    const id = req.query.id;
 
-    let file = model.Audios.findOne({
-        where:{
-            id:req.query.id
+    model.Audios.findOne({
+        where: {
+            id: req.query.id
         }
     }).then(data => {
-        console.log(data)
-        res.send('Ok')
+
+        ms = require('mediaserver');
+
+        ms.pipe(req, res, `audio/${data.FileName}`)
     })
 
-    // const file = __dirname + '/mp3/trololol.mp3';
-    // const stat = fs.statSync(file);
-    // const total = stat.size;
-    // if (req.headers.range) {
+})
 
-    // }
+
+router.get('/download', (req, res) => {
+    const id = req.query.id;
+
+    model.Audios.findOne({
+        where: {
+            id: req.query.id
+        }
+    }).then(audio => {        
   
-    // fs.exists(file, (exists) => {
-    //     if (exists) {
-    //         const range = req.headers.range;
-    //         const parts = range.replace(/bytes=/, '').split('-');
-    //         const partialStart = parts[0];
-    //         const partialEnd = parts[1];
+        
+        var file = fs.readFileSync(audio.FilePath, 'binary');
 
-    //         const start = parseInt(partialStart, 10);
-    //         const end = partialEnd ? parseInt(partialEnd, 10) : total - 1;
-    //         const chunksize = (end - start) + 1;
-    //         const rstream = fs.createReadStream(file, {start: start, end: end});
+        res.setHeader('Content-Length', file.length);
+        res.setHeader('Content-disposition', `attachment; filename=${audio.FileName}`);
+        res.write(file, 'binary');
+        res.end();
 
-    //         res.writeHead(206, {
-    //             'Content-Range': 'bytes ' + start + '-' + end + '/' + total,
-    //             'Accept-Ranges': 'bytes', 'Content-Length': chunksize,
-    //             'Content-Type': 'audio/mpeg'
-    //         });
-    //         rstream.pipe(res);
+    })
 
-    //     } else {
-    //         res.send('Error - 404');
-    //         res.end();
-    //         // res.writeHead(200, { 'Content-Length': total, 'Content-Type': 'audio/mpeg' });
-    //         // fs.createReadStream(path).pipe(res);
-    //     }
-    // });
-});
+})
+
+
 
 module.exports = router;
