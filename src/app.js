@@ -16,6 +16,10 @@ const mp3 = require('./mp3');
 
 app.use('/mp3', mp3);
 
+app.get('/', (req, res) => {
+    res.send('Back-End running...')
+})
+
 let port = 3000;
 
 app.listen(port, 'localhost', () => {

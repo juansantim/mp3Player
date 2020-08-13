@@ -36,6 +36,8 @@ bower_components
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
 
+audio/
+
 # Dependency directories
 node_modules/
 jspm_packages/
@@ -100,6 +102,8 @@ dist
 
 # DynamoDB Local files
 .dynamodb/
+
+
 
 # TernJS port file
 .tern-port

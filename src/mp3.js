@@ -1,6 +1,8 @@
 const express = require('express')
 var moment = require('moment'); // require
 
+const { Op } = require('sequelize');
+
 const model = require('./Model/model');
 
 var router = express.Router();
@@ -13,6 +15,12 @@ const fs = require('fs');
 const path = require('path');
 
 router.get('/updateDb', (req, res) => {
+
+
+    model.Audios.destroy({
+        where: {},
+        truncate: true
+    })
 
     //joining path of directory 
     const directoryPath = path.join(__dirname, '../audio');
@@ -71,17 +79,79 @@ router.get('/updateDb', (req, res) => {
       "createdAt":"2020-08-08T20:23:32.944Z",
       "updatedAt":"2020-08-08T20:23:32.944Z"
 */
+
+// export class DataFilter{
+//     filtrarFechas: boolean;
+//     filtrarOrigen: boolean;
+//     filtrarDestino: boolean;
+
+//     fechaDesde: Date;
+//     fechaHasta: Date;
+
+//     origen: string;
+//     destino: string;
+// }
+
 router.post('/getall', (req, res) => {
+
+    let { filter, pagination } = req.body;
+
+    let where = {};
+
+    if (filter.filtrarFechas) {
+        where.Fecha = { [Op.between]: [filter.fechaDesde, filter.fechaHasta] }
+    }
+
+    if (filter.filtrarOrigen) {
+        where.Origen = { [Op.eq]: filter.origen }
+    }
+
+    if (filter.filtrarDestino) {
+        where.Destino = { [Op.eq]: filter.destino }
+    }
+
+    model.Audios.count({ where }).then(data => {
+        pagination.totalItems = data;
+
+
+        pagination.totalPages = Math.ceil(pagination.totalItems / pagination.pageSize) -1 ;
+
+        model.Audios.findAndCountAll(
+            {
+                where: where,
+                attributes: ['id', 'FileName', 'Origen', 'Destino', 'Fecha'],
+                limit: pagination.pageSize,
+                offset: (pagination.currentPage - 1) * pagination.pageSize
+            }).then((data) => {
+                let result = {
+                    totalItems: data.length,
+                    data: data.rows,
+                    totalPages: pagination.totalPages,
+                    currentPage: pagination.currentPage,
+                    pageSize: pagination.pageSize
+                };
+
+                res.send(result);
+
+                console.log('THE COUNT IS =====>', data.count);
+            })
+
+    });
+
+
+})
+
+router.get('/getall', (req, res) => {
     console.log(req.body);
     audios = model.Audios.findAll({ attributes: ['id', 'FileName', 'Origen', 'Destino', 'Fecha'] }).then(data => {
-        
+
         let result = {
-            totalItems:data.length,
+            totalItems: data.length,
             data,
             totalPages: 1,
             currentPage: 1
         };
-        
+
         res.send(result);
     })
 
@@ -114,9 +184,9 @@ router.get('/download', (req, res) => {
         where: {
             id: req.query.id
         }
-    }).then(audio => {        
-  
-        
+    }).then(audio => {
+
+
         var file = fs.readFileSync(audio.FilePath, 'binary');
 
         res.setHeader('Content-Length', file.length);
