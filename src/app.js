@@ -13,8 +13,10 @@ const path = require("path");
 app.use('/audio', express.static(path.join(__dirname, '../audio')))
 
 const mp3 = require('./mp3');
+const security = require('./Security/security')
 
 app.use('/mp3', mp3);
+app.use('/security', security)
 
 app.get('/', (req, res) => {
     res.send('Back-End running...')
