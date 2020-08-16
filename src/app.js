@@ -11,6 +11,7 @@ app.use(cors())
 
 const path = require("path");
 app.use('/audio', express.static(path.join(__dirname, '../audio')))
+app.use('/download', express.static(path.join(__dirname, '../download')))
 
 const mp3 = require('./mp3');
 const security = require('./Security/security')

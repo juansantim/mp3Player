@@ -5,7 +5,8 @@ const { Sequelize, DataTypes  } = require('sequelize');
 const connection = new Sequelize({
   dialect: 'sqlite',
   storage: 'database.sqlite',
-  logging: console.log,
+  //logging: console.log,
+  logging: false,
   operatorsAliases: false,
   sync: true
 });

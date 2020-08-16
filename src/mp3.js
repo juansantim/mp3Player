@@ -70,30 +70,6 @@ router.get('/updateDb', (req, res) => {
 
 })
 
-/*
-   "id":1,
-      "FilePath":"C:\\Workspace\\mp3Player\\audio\\exten-254-8095801171-20190228-092104-1551360039.188501.WAV",
-      "FileName":"exten-254-8095801171-20190228-092104-1551360039.188501.WAV",
-      "Directory":"C:\\Workspace\\mp3Player\\audio",
-      "Origen":"8095801171",
-      "Destino":"254",
-      "Fecha":"2019-02-28T04:00:00.000Z",
-      "createdAt":"2020-08-08T20:23:32.944Z",
-      "updatedAt":"2020-08-08T20:23:32.944Z"
-*/
-
-// export class DataFilter{
-//     filtrarFechas: boolean;
-//     filtrarOrigen: boolean;
-//     filtrarDestino: boolean;
-
-//     fechaDesde: Date;
-//     fechaHasta: Date;
-
-//     origen: string;
-//     destino: string;
-// }
-
 router.post('/getall', (req, res) => {
 
     let { filter, pagination } = req.body;
@@ -163,11 +139,7 @@ router.post('/downloadAll', (req, res) => {
         }
     }
 
-
     model.Audios.count({ where }).then(data => {
-        //pagination.totalItems = data;
-
-        //pagination.totalPages = Math.ceil(pagination.totalItems / pagination.pageSize) - 1;
 
         model.Audios.findAndCountAll(
             {
@@ -175,7 +147,8 @@ router.post('/downloadAll', (req, res) => {
                 attributes: ['id', 'FileName', 'FilePath'],
             }).then((data) => {
 
-                const fileName = './theFile.zip';
+                
+                const fileName = `./download/${uuidv4()}.zip`;
                 var output = fs.createWriteStream(fileName);
 
                 var archive = archiver('zip', {
@@ -196,27 +169,29 @@ router.post('/downloadAll', (req, res) => {
                     archive.file(file.FilePath, { name: file.FileName });
                 })
 
-                archive.finalize();
+                archive.finalize().then(() => {
 
-                const downloadPath = path.join(__dirname, '.' + fileName);
+                    const downloadPath = path.join(__dirname, '.' + fileName);
                 
-                fs.readFile(downloadPath, 'binary', (err, file) => {
-                    if (err) {
-                        if (err.errno == -4058) {
-                            res.send(404)
+                    fs.readFile(downloadPath, 'binary', (err, file) => {
+                        if (err) {
+                            if (err.errno == -4058) {
+                                res.send(404)
+                            }
+                            else {
+                                res.send(500)
+                            }
+    
                         }
                         else {
-                            res.send(500)
+                            res.setHeader('Content-Length', file.length);
+                            res.setHeader('Content-disposition', `attachment; filename=download.zip`);
+                            res.write(file, 'binary');
+                            res.end();
                         }
-
-                    }
-                    else {
-                        res.setHeader('Content-Length', file.length);
-                        res.setHeader('Content-disposition', `attachment; filename=download.zip`);
-                        res.write(file, 'binary');
-                        res.end();
-                    }
+                    });
                 });
+
 
             })
 
@@ -225,21 +200,55 @@ router.post('/downloadAll', (req, res) => {
 
 })
 
-router.get('/getall', (req, res) => {
-    console.log(req.body);
-    audios = model.Audios.findAll({ attributes: ['id', 'FileName', 'Origen', 'Destino', 'Fecha'] }).then(data => {
+router.post('/download', (req, res) => {
 
-        let result = {
-            totalItems: data.length,
-            data,
-            totalPages: 1,
-            currentPage: 1
-        };
+    let  fileName = req.query.filaName;
 
-        res.send(result);
-    })
+    const downloadPath = path.join(__dirname, '.' + fileName);
+                
+    fs.readFile(downloadPath, 'binary', (err, file) => {
+        if (err) {
+            if (err.errno == -4058) {
+                res.send(404)
+            }
+            else {
+                res.send(500)
+            }
+        }
+        else {
+            res.setHeader('Content-Length', file.length);
+            res.setHeader('Content-disposition', `attachment; filename=download.zip`);
+            res.write(file, 'binary');
+            res.end();
+        }
+    });
 
 })
+
+
+function uuidv4() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+  
+
+// router.get('/getall', (req, res) => {
+//     console.log(req.body);
+//     audios = model.Audios.findAll({ attributes: ['id', 'FileName', 'Origen', 'Destino', 'Fecha'] }).then(data => {
+
+//         let result = {
+//             totalItems: data.length,
+//             data,
+//             totalPages: 1,
+//             currentPage: 1
+//         };
+
+//         res.send(result);
+//     })
+
+// })
 
 router.get('/play', (req, res) => {
     const id = req.query.id;
