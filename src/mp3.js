@@ -1,6 +1,8 @@
 const express = require('express')
 var moment = require('moment'); // require
 
+var archiver = require('archiver');
+
 const { Op } = require('sequelize');
 
 const model = require('./Model/model');
@@ -114,7 +116,7 @@ router.post('/getall', (req, res) => {
         pagination.totalItems = data;
 
 
-        pagination.totalPages = Math.ceil(pagination.totalItems / pagination.pageSize) -1 ;
+        pagination.totalPages = Math.ceil(pagination.totalItems / pagination.pageSize) - 1;
 
         model.Audios.findAndCountAll(
             {
@@ -124,7 +126,7 @@ router.post('/getall', (req, res) => {
                 offset: (pagination.currentPage - 1) * pagination.pageSize
             }).then((data) => {
                 let result = {
-                    totalItems: data.length,
+                    totalItems: data.count,
                     data: data.rows,
                     totalPages: pagination.totalPages,
                     currentPage: pagination.currentPage,
@@ -134,6 +136,88 @@ router.post('/getall', (req, res) => {
                 res.send(result);
 
                 console.log('THE COUNT IS =====>', data.count);
+            })
+
+    });
+
+
+})
+
+router.post('/downloadAll', (req, res) => {
+
+    let { filter, pagination } = req.body;
+
+    let where = {};
+
+    if (filter) {
+        if (filter.filtrarFechas) {
+            where.Fecha = { [Op.between]: [filter.fechaDesde, filter.fechaHasta] }
+        }
+
+        if (filter.filtrarOrigen) {
+            where.Origen = { [Op.eq]: filter.origen }
+        }
+
+        if (filter.filtrarDestino) {
+            where.Destino = { [Op.eq]: filter.destino }
+        }
+    }
+
+
+    model.Audios.count({ where }).then(data => {
+        //pagination.totalItems = data;
+
+        //pagination.totalPages = Math.ceil(pagination.totalItems / pagination.pageSize) - 1;
+
+        model.Audios.findAndCountAll(
+            {
+                where: where,
+                attributes: ['id', 'FileName', 'FilePath'],
+            }).then((data) => {
+
+                const fileName = './theFile.zip';
+                var output = fs.createWriteStream(fileName);
+
+                var archive = archiver('zip', {
+                    gzip: true,
+                    zlib: { level: 9 } // Sets the compression level.
+                });
+
+                archive.on('error', function (err) {
+                    res.send(500);
+                });
+
+                // pipe archive data to the output file
+                archive.pipe(output);
+
+                // append files
+
+                data.rows.forEach(file => {
+                    archive.file(file.FilePath, { name: file.FileName });
+                })
+
+                archive.finalize();
+
+                const downloadPath = path.join(__dirname, '.' + fileName);
+                
+                fs.readFile(downloadPath, 'binary', (err, file) => {
+                    if (err) {
+                        if (err.errno == -4058) {
+                            res.send(404)
+                        }
+                        else {
+                            res.send(500)
+                        }
+
+                    }
+                    else {
+                        res.setHeader('Content-Length', file.length);
+                        res.setHeader('Content-disposition', `attachment; filename=download.zip`);
+                        res.write(file, 'binary');
+                        res.end();
+                    }
+                });
+
             })
 
     });
@@ -173,9 +257,7 @@ router.get('/play', (req, res) => {
 
 })
 
-router.get('list', (req, res) => {
 
-});
 
 router.get('/download', (req, res) => {
     const id = req.query.id;
@@ -187,12 +269,24 @@ router.get('/download', (req, res) => {
     }).then(audio => {
 
 
-        var file = fs.readFileSync(audio.FilePath, 'binary');
+        var file = fs.readFile(audio.FilePath, 'binary', (err) => {
+            if (err) {
+                if (err.errno == -4058) {
+                    res.send(404)
+                }
+                else {
+                    res.send(500)
+                }
 
-        res.setHeader('Content-Length', file.length);
-        res.setHeader('Content-disposition', `attachment; filename=${audio.FileName}`);
-        res.write(file, 'binary');
-        res.end();
+            }
+            else {
+                res.setHeader('Content-Length', file.length);
+                res.setHeader('Content-disposition', `attachment; filename=${audio.FileName}`);
+                res.write(file, 'binary');
+                res.end();
+            }
+        });
+
 
     })
 
