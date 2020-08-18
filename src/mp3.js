@@ -7,6 +7,8 @@ const { Op } = require('sequelize');
 
 const model = require('./Model/model');
 
+
+
 var router = express.Router();
 
 router.get('/', (req, res) => {
@@ -14,6 +16,8 @@ router.get('/', (req, res) => {
 })
 
 const fs = require('fs');
+const { readdirSync } = fs;
+
 const path = require('path');
 
 router.get('/updateDb', (req, res) => {
@@ -25,48 +29,56 @@ router.get('/updateDb', (req, res) => {
     })
 
     //joining path of directory 
-    const directoryPath = path.join(__dirname, '../audio');
-    //passsing directoryPath and callback function
-    fs.readdir(directoryPath, function (err, files) {
-        //handling error
-        if (err) {
-            return console.log('Unable to scan directory: ' + err);
-        }
-        //listing all files using forEach
-        files.forEach(function (file) {
+    const baseDirectory = path.join(__dirname, '../audio');
 
-            /*
-             FilePath: DataTypes.STRING(255),    
-            FileName: DataTypes.STRING(255), 
-            Directory: DataTypes.STRING(255),       
-            Origen: DataTypes.STRING,
-            Destino: DataTypes.STRING,
-            Fecha: DataTypes.DATE,  
-            */
+    let dirSeparator = process.platform === "win32" ? '\\' : '/';
 
-            //[COLA,EXTENSION,RINGROUP]-DESTINO-ORIGEN-FECHA-HORA-[ID-DE-ASTERISK].WAV
-            //exten-254-8095801171-20190228-092104-1551360039.188501.WAV
-            //q-4000-8092212448-20190228-160309-1551384167.199115.WAV
+    const getDirectories = source => readdirSync(source, { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .map(dirent => source + dirSeparator + dirent.name)
 
-            var array = file.split('-');
+    const LoadFiles = function (dir) {
 
-            let origen = array[2];
-            let destino = array[1];
+        fs.readdir(dir, { withFileTypes: true }, function (err, files) {
+            //handling error
+            if (err) {
+                return console.log('Unable to scan directory: ' + err);
+            }
+            //listing all files using forEach
+            files.forEach(function (file) {
+                if (file.isFile() === true) {
+                    var array = file.name.split('-');
 
-            let fecha = moment(array[3]).toDate();
+                    let origen = array[2];
+                    let destino = array[1];
 
-            let audio = model.Audios.create({
-                FilePath: `${directoryPath}\\${file}`,
-                FileName: file,
-                Directory: directoryPath,
-                Origen: origen,
-                Destino: destino,
-                Fecha: fecha
-            })
+                    let fecha = moment(array[3]).toDate();
+
+                    model.Audios.create({
+                        FilePath: `${dir}${dirSeparator}${file.name}`,
+                        FileName: file.name,
+                        Directory: dir,
+                        Origen: origen,
+                        Destino: destino,
+                        Fecha: fecha
+                    }).then(data => {
+                        console.log(`File indexed ${data.FileName}`);
+                    });
+                }
+
+            });
+
         });
 
-        res.send('UpToDate')
-    });
+        getDirectories(dir).forEach(subDirs => {
+            LoadFiles(subDirs)
+        })
+
+
+    }
+
+    LoadFiles(baseDirectory);
+    res.send('UpToDate');
 
 })
 
@@ -97,7 +109,7 @@ router.post('/getall', (req, res) => {
         model.Audios.findAndCountAll(
             {
                 where: where,
-                attributes: ['id', 'FileName', 'Origen', 'Destino', 'Fecha'],
+                attributes: ['id', 'FileName', 'Origen', 'Destino', 'Fecha', 'FilePath'],
                 limit: pagination.pageSize,
                 offset: (pagination.currentPage - 1) * pagination.pageSize
             }).then((data) => {
@@ -147,7 +159,7 @@ router.post('/downloadAll', (req, res) => {
                 attributes: ['id', 'FileName', 'FilePath'],
             }).then((data) => {
 
-                
+
                 const fileName = `./download/${uuidv4()}.zip`;
                 var output = fs.createWriteStream(fileName);
 
@@ -169,10 +181,11 @@ router.post('/downloadAll', (req, res) => {
                     archive.file(file.FilePath, { name: file.FileName });
                 })
 
-                archive.finalize().then(() => {
+                archive.finalize();
 
+                output.on('close', ()  => {
                     const downloadPath = path.join(__dirname, '.' + fileName);
-                
+
                     fs.readFile(downloadPath, 'binary', (err, file) => {
                         if (err) {
                             if (err.errno == -4058) {
@@ -181,7 +194,7 @@ router.post('/downloadAll', (req, res) => {
                             else {
                                 res.send(500)
                             }
-    
+
                         }
                         else {
                             res.setHeader('Content-Length', file.length);
@@ -190,9 +203,7 @@ router.post('/downloadAll', (req, res) => {
                             res.end();
                         }
                     });
-                });
-
-
+                })
             })
 
     });
@@ -200,55 +211,14 @@ router.post('/downloadAll', (req, res) => {
 
 })
 
-router.post('/download', (req, res) => {
-
-    let  fileName = req.query.filaName;
-
-    const downloadPath = path.join(__dirname, '.' + fileName);
-                
-    fs.readFile(downloadPath, 'binary', (err, file) => {
-        if (err) {
-            if (err.errno == -4058) {
-                res.send(404)
-            }
-            else {
-                res.send(500)
-            }
-        }
-        else {
-            res.setHeader('Content-Length', file.length);
-            res.setHeader('Content-disposition', `attachment; filename=download.zip`);
-            res.write(file, 'binary');
-            res.end();
-        }
-    });
-
-})
-
 
 function uuidv4() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
     });
-  }
-  
+}
 
-// router.get('/getall', (req, res) => {
-//     console.log(req.body);
-//     audios = model.Audios.findAll({ attributes: ['id', 'FileName', 'Origen', 'Destino', 'Fecha'] }).then(data => {
-
-//         let result = {
-//             totalItems: data.length,
-//             data,
-//             totalPages: 1,
-//             currentPage: 1
-//         };
-
-//         res.send(result);
-//     })
-
-// })
 
 router.get('/play', (req, res) => {
     const id = req.query.id;
@@ -266,8 +236,6 @@ router.get('/play', (req, res) => {
 
 })
 
-
-
 router.get('/download', (req, res) => {
     const id = req.query.id;
 
@@ -278,7 +246,7 @@ router.get('/download', (req, res) => {
     }).then(audio => {
 
 
-        var file = fs.readFile(audio.FilePath, 'binary', (err) => {
+        var file = fs.readFile(audio.FilePath, 'binary', (err, data) => {
             if (err) {
                 if (err.errno == -4058) {
                     res.send(404)
@@ -289,15 +257,41 @@ router.get('/download', (req, res) => {
 
             }
             else {
-                res.setHeader('Content-Length', file.length);
+                res.setHeader('Content-Length', data.length);
                 res.setHeader('Content-disposition', `attachment; filename=${audio.FileName}`);
-                res.write(file, 'binary');
+                res.write(data, 'binary');
                 res.end();
             }
         });
 
 
     })
+
+})
+
+
+router.post('/download', (req, res) => {
+
+    let fileName = req.query.filaName;
+
+    const downloadPath = path.join(__dirname, '.' + fileName);
+
+    fs.readFile(downloadPath, 'binary', (err, file) => {
+        if (err) {
+            if (err.errno == -4058) {
+                res.send(404)
+            }
+            else {
+                res.send(500)
+            }
+        }
+        else {
+            res.setHeader('Content-Length', file.length);
+            res.setHeader('Content-disposition', `attachment; filename=download.zip`);
+            res.write(file, 'binary');
+            res.end();
+        }
+    });
 
 })
 
