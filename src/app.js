@@ -21,7 +21,7 @@ app.use('/security', security)
 
 app.get('/', (req, res) => {
     res.send('Back-End running...')
-})
+});
 
 let port = 3000;
 

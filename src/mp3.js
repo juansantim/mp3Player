@@ -7,8 +7,6 @@ const { Op } = require('sequelize');
 
 const model = require('./Model/model');
 
-
-
 var router = express.Router();
 
 router.get('/', (req, res) => {

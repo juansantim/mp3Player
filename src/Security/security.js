@@ -28,7 +28,14 @@ router.post('/login', (req, res) => {
         attributes: ['id', 'UserName', 'Email', 'FirstName', 'LastName']
     }).then(usr => {
         if(usr){
-            res.send(generateAccessToken(usr.dataValues));
+
+            const response = {
+                token: generateAccessToken(usr.dataValues),
+                UserName: usr.UserName,
+                Email:  usr.Email 
+            }
+
+            res.send(response);
         }
         else{
             res.sendStatus(401);
